@@ -1509,7 +1509,7 @@ const ActionsDAG::Node & ActionsDAG::addFunction(
     const FunctionOverloadResolverPtr & function,
     const Names & argument_names,
     std::string result_name,
-    bool compile_expressions)
+    bool compile_expressions [[maybe_unused]])
 {
     size_t num_arguments = argument_names.size();
 
