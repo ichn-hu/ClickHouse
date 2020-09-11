@@ -157,26 +157,23 @@ void ExpressionAnalyzer::analyzeAggregation()
 
     if (select_query)
     {
-        NamesAndTypesList array_join_columns;
+        columns_after_array_join = sourceColumns();
 
         bool is_array_join_left;
         if (ASTPtr array_join_expression_list = select_query->arrayJoinExpressionList(is_array_join_left))
         {
             getRootActionsNoMakeSet(array_join_expression_list, true, temp_actions, false);
-            if (auto array_join = addMultipleArrayJoinAction(temp_actions, is_array_join_left))
-            {
-                auto sample_columns = temp_actions->getResultColumns();
-                array_join->prepare(sample_columns);
-                temp_actions = std::make_shared<ActionsDAG>(sample_columns);
-            }
+
+            auto array_join = addMultipleArrayJoinAction(temp_actions, is_array_join_left);
+            auto sample_columns = temp_actions->getResultColumns();
+            array_join->prepare(sample_columns);
+            temp_actions = std::make_shared<ActionsDAG>(sample_columns);
+
+            columns_after_array_join.clear();
 
             for (auto & column : temp_actions->getResultColumns())
-                if (syntax->array_join_result_to_source.count(column.name))
-                    array_join_columns.emplace_back(column.name, column.type);
+                columns_after_array_join.emplace_back(column.name, column.type);
         }
-
-        columns_after_array_join = sourceColumns();
-        columns_after_array_join.insert(columns_after_array_join.end(), array_join_columns.begin(), array_join_columns.end());
 
         const ASTTablesInSelectQueryElement * join = select_query->join();
         if (join)
