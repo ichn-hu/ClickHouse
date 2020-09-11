@@ -881,7 +881,7 @@ bool SelectQueryExpressionAnalyzer::appendLimitBy(ExpressionActionsChain & chain
     return true;
 }
 
-void SelectQueryExpressionAnalyzer::appendProjectResult(ExpressionActionsChain & chain) const
+ExpressionActionsPtr SelectQueryExpressionAnalyzer::appendProjectResult(ExpressionActionsChain & chain) const
 {
     const auto * select_query = getSelectQuery();
 
@@ -927,7 +927,9 @@ void SelectQueryExpressionAnalyzer::appendProjectResult(ExpressionActionsChain &
         }
     }
 
-    chain.getLastActions()->add(ExpressionAction::project(result_columns));
+    auto actions = chain.getLastActions();
+    actions->add(ExpressionAction::project(result_columns));
+    return actions;
 }
 
 
@@ -1175,8 +1177,7 @@ ExpressionAnalysisResult::ExpressionAnalysisResult(
             chain.addStep();
         }
 
-        query_analyzer.appendProjectResult(chain);
-        final_projection = chain.getLastActions();
+        final_projection = query_analyzer.appendProjectResult(chain);
 
         finalize_chain(chain);
     }
