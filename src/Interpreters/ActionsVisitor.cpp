@@ -436,7 +436,7 @@ void ScopeStack::addAlias(const std::string & name, std::string alias)
 void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name)
 {
     auto level = getColumnLevel(source_name);
-    const auto & node = stack[level]->addAlias(source_name, std::move(result_name));
+    const auto & node = stack[level]->addArrayJoin(source_name, std::move(result_name));
 
     for (size_t j = level + 1; j < stack.size(); ++j)
         stack[j]->addInput(node.result_name, node.result_type);
