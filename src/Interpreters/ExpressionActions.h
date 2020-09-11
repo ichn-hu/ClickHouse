@@ -464,7 +464,7 @@ struct ExpressionActionsChain
             throw Exception("Empty ExpressionActionsChain", ErrorCodes::LOGICAL_ERROR);
         }
 
-        auto * step = typeid_cast<ExpressionActionsStep *>(&steps.back());
+        auto * step = typeid_cast<ExpressionActionsStep *>(steps.back().get());
         step->actions = step->actions_dag->buildExpressions(context);
         return step->actions;
     }
