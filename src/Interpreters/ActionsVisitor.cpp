@@ -418,10 +418,9 @@ size_t ScopeStack::getColumnLevel(const std::string & name)
 
 void ScopeStack::addColumn(ColumnWithTypeAndName column)
 {
-    auto level = getColumnLevel(column.name);
-    const auto & node = stack[level]->addColumn(std::move(column));
+    const auto & node = stack[0]->addColumn(std::move(column));
 
-    for (size_t j = level + 1; j < stack.size(); ++j)
+    for (size_t j = 1; j < stack.size(); ++j)
         stack[j]->addInput(node.result_name, node.result_type);
 }
 
