@@ -1435,11 +1435,11 @@ ActionsDAG::Node & ActionsDAG::addNode(Node node, bool can_replace)
         throw Exception("Column '" + node.result_name + "' already exists", ErrorCodes::DUPLICATE_COLUMN);
 
     auto & res = nodes.emplace_back(std::move(node));
-    index[res.result_name] = &res;
 
     if (it != index.end())
         it->second->renaming_parent = &res;
 
+    index[res.result_name] = &res;
     return res;
 }
 
