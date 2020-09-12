@@ -1428,12 +1428,7 @@ ActionsDAG::ActionsDAG(const NamesAndTypesList & inputs)
 ActionsDAG::ActionsDAG(const ColumnsWithTypeAndName & inputs)
 {
     for (const auto & input : inputs)
-    {
-        if (input.column)
-            addColumn(input);
-        else
-            addInput(input.name, input.type);
-    }
+        addColumn(input);
 }
 
 ActionsDAG::Node & ActionsDAG::addNode(Node node, bool can_replace)
@@ -1473,7 +1468,7 @@ const ActionsDAG::Node & ActionsDAG::addInput(std::string name, DataTypePtr type
 const ActionsDAG::Node & ActionsDAG::addColumn(ColumnWithTypeAndName column)
 {
     Node node;
-    node.type = Type::COLUMN;
+    node.type = column.column ? Type::COLUMN : Type::INPUT;
     node.result_type = std::move(column.type);
     node.result_name = std::move(column.name);
     node.column = std::move(column.column);
