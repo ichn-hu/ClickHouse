@@ -1428,7 +1428,7 @@ ActionsDAG::ActionsDAG(const NamesAndTypesList & inputs)
 ActionsDAG::ActionsDAG(const ColumnsWithTypeAndName & inputs)
 {
     for (const auto & input : inputs)
-        addColumn(input);
+        addInput(input);
 }
 
 ActionsDAG::Node & ActionsDAG::addNode(Node node, bool can_replace)
@@ -1478,6 +1478,9 @@ const ActionsDAG::Node & ActionsDAG::addInput(ColumnWithTypeAndName column)
 
 const ActionsDAG::Node & ActionsDAG::addColumn(ColumnWithTypeAndName column)
 {
+    if (!column.column)
+        throw Exception("Cannot add column " + column.name + " because it is nullptr", ErrorCodes::LOGICAL_ERROR);
+
     Node node;
     node.type = Type::COLUMN;
     node.result_type = std::move(column.type);
