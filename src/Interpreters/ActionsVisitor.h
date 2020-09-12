@@ -34,7 +34,13 @@ SetPtr makeExplicitSet(
   */
 struct ScopeStack
 {
-    using Levels = std::vector<ActionsDAGPtr>;
+    struct Level
+    {
+        ActionsDAGPtr actions;
+        NameSet inputs;
+    };
+
+    using Levels = std::vector<Level>;
 
     Levels stack;
 

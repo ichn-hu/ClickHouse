@@ -388,64 +388,81 @@ SetPtr makeExplicitSet(
 ScopeStack::ScopeStack(ActionsDAGPtr actions, const Context & context_)
     : context(context_)
 {
-    stack.emplace_back(std::move(actions));
+    auto & level = stack.emplace_back();
+    level.actions = std::move(actions);
+
+    for (const auto & [name, node] : level.actions->getIndex())
+        if (node->type == ActionsDAG::Type::INPUT)
+            level.inputs.emplace(name);
 }
 
 void ScopeStack::pushLevel(const NamesAndTypesList & input_columns)
 {
-    auto & actions = stack.emplace_back(std::make_shared<ActionsDAG>());
+    auto & level = stack.emplace_back();
+    level.actions = std::make_shared<ActionsDAG>();
     const auto & prev = stack[stack.size() - 2];
 
     for (const auto & input_column : input_columns)
-        actions->addInput(input_column.name, input_column.type);
+    {
+        level.actions->addInput(input_column.name, input_column.type);
+        level.inputs.emplace(input_column.name);
+    }
 
-    const auto & index = actions->getIndex();
+    const auto & index = level.actions->getIndex();
 
-    for (const auto & [name, node] : prev->getIndex())
+    for (const auto & [name, node] : prev.actions->getIndex())
     {
         if (index.count(name) == 0)
-            actions->addInput({node->column, node->result_type, node->result_name});
+            level.actions->addInput({node->column, node->result_type, node->result_name});
     }
 }
 
 size_t ScopeStack::getColumnLevel(const std::string & name)
 {
     for (int i = static_cast<int>(stack.size()) - 1; i >= 0; --i)
-        if (stack[i]->getIndex().count(name))
+    {
+        if (stack[i].inputs.count(name))
             return i;
+
+        const auto & index = stack[i].actions->getIndex();
+        auto it = index.find(name);
+
+        if (it != index.end() && it->second->type != ActionsDAG::Type::INPUT)
+            return i;
+    }
 
     throw Exception("Unknown identifier: " + name, ErrorCodes::UNKNOWN_IDENTIFIER);
 }
 
 void ScopeStack::addColumn(ColumnWithTypeAndName column)
 {
-    const auto & node = stack[0]->addColumn(std::move(column));
+    const auto & node = stack[0].actions->addColumn(std::move(column));
 
     for (size_t j = 1; j < stack.size(); ++j)
-        stack[j]->addInput({node.column, node.result_type, node.result_name});
+        stack[j].actions->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addAlias(const std::string & name, std::string alias)
 {
    auto level = getColumnLevel(name);
-   const auto & node = stack[level]->addAlias(name, std::move(alias));
+   const auto & node = stack[level].actions->addAlias(name, std::move(alias));
 
     for (size_t j = level + 1; j < stack.size(); ++j)
-        stack[j]->addInput({node.column, node.result_type, node.result_name});
+        stack[j].actions->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name, std::string unique_column_name)
 {
     getColumnLevel(source_name);
 
-    if (stack.front()->getIndex().count(source_name) == 0)
+    if (stack.front().actions->getIndex().count(source_name) == 0)
         throw Exception("Expression with arrayJoin cannot depend on lambda argument: " + source_name,
                         ErrorCodes::BAD_ARGUMENTS);
 
-    const auto & node = stack.front()->addArrayJoin(source_name, std::move(result_name), std::move(unique_column_name));
+    const auto & node = stack.front().actions->addArrayJoin(source_name, std::move(result_name), std::move(unique_column_name));
 
     for (size_t j = 1; j < stack.size(); ++j)
-        stack[j]->addInput({node.column, node.result_type, node.result_name});
+        stack[j].actions->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addFunction(
@@ -458,27 +475,27 @@ void ScopeStack::addFunction(
     for (const auto & argument : argument_names)
         level = std::max(level, getColumnLevel(argument));
 
-    const auto & node = stack[level]->addFunction(function, argument_names, std::move(result_name), compile_expressions);
+    const auto & node = stack[level].actions->addFunction(function, argument_names, std::move(result_name), compile_expressions);
 
     for (size_t j = level + 1; j < stack.size(); ++j)
-        stack[j]->addInput({node.column, node.result_type, node.result_name});
+        stack[j].actions->addInput({node.column, node.result_type, node.result_name});
 }
 
 ActionsDAGPtr ScopeStack::popLevel()
 {
     auto res = std::move(stack.back());
     stack.pop_back();
-    return res;
+    return res.actions;
 }
 
 std::string ScopeStack::dumpNames() const
 {
-    return stack.back()->dumpNames();
+    return stack.back().actions->dumpNames();
 }
 
 const ActionsDAG::Index & ScopeStack::getIndex() const
 {
-    return stack.back()->getIndex();
+    return stack.back().actions->getIndex();
 }
 
 struct CachedColumnName
