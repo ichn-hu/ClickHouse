@@ -202,6 +202,7 @@ public:
     std::string dumpNames() const;
 
     const Node & addInput(std::string name, DataTypePtr type);
+    const Node & addInput(ColumnWithTypeAndName column);
     const Node & addColumn(ColumnWithTypeAndName column);
     const Node & addAlias(const std::string & name, std::string alias, bool can_replace = false);
     const Node & addArrayJoin(const std::string & source_name, std::string result_name);

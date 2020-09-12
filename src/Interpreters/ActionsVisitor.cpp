@@ -403,7 +403,7 @@ void ScopeStack::pushLevel(const NamesAndTypesList & input_columns)
     for (const auto & [name, node] : prev->getIndex())
     {
         if (index.count(name) == 0)
-            actions->addColumn({node->column, node->result_type, node->result_name});
+            actions->addInput({node->column, node->result_type, node->result_name});
     }
 }
 
@@ -421,7 +421,7 @@ void ScopeStack::addColumn(ColumnWithTypeAndName column)
     const auto & node = stack[0]->addColumn(std::move(column));
 
     for (size_t j = 1; j < stack.size(); ++j)
-        stack[j]->addColumn({node.column, node.result_type, node.result_name});
+        stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addAlias(const std::string & name, std::string alias)
@@ -430,7 +430,7 @@ void ScopeStack::addAlias(const std::string & name, std::string alias)
    const auto & node = stack[level]->addAlias(name, std::move(alias));
 
     for (size_t j = level + 1; j < stack.size(); ++j)
-        stack[j]->addColumn({node.column, node.result_type, node.result_name});
+        stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name)
@@ -439,7 +439,7 @@ void ScopeStack::addArrayJoin(const std::string & source_name, std::string resul
     const auto & node = stack[level]->addArrayJoin(source_name, std::move(result_name));
 
     for (size_t j = level + 1; j < stack.size(); ++j)
-        stack[j]->addColumn({node.column, node.result_type, node.result_name});
+        stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
 void ScopeStack::addFunction(
@@ -455,7 +455,7 @@ void ScopeStack::addFunction(
     const auto & node = stack[level]->addFunction(function, argument_names, std::move(result_name), compile_expressions);
 
     for (size_t j = level + 1; j < stack.size(); ++j)
-        stack[j]->addColumn({node.column, node.result_type, node.result_name});
+        stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
 ActionsDAGPtr ScopeStack::popLevel()

@@ -1465,10 +1465,21 @@ const ActionsDAG::Node & ActionsDAG::addInput(std::string name, DataTypePtr type
     return addNode(std::move(node));
 }
 
+const ActionsDAG::Node & ActionsDAG::addInput(ColumnWithTypeAndName column)
+{
+    Node node;
+    node.type = Type::INPUT;
+    node.result_type = std::move(column.type);
+    node.result_name = std::move(column.name);
+    node.column = std::move(column.column);
+
+    return addNode(std::move(node));
+}
+
 const ActionsDAG::Node & ActionsDAG::addColumn(ColumnWithTypeAndName column)
 {
     Node node;
-    node.type = column.column ? Type::COLUMN : Type::INPUT;
+    node.type = Type::COLUMN;
     node.result_type = std::move(column.type);
     node.result_name = std::move(column.name);
     node.column = std::move(column.column);
