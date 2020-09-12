@@ -1251,7 +1251,10 @@ void ExpressionActionsChain::addStep()
         throw Exception("Cannot add action to empty ExpressionActionsChain", ErrorCodes::LOGICAL_ERROR);
 
     if (auto * step = typeid_cast<ExpressionActionsStep *>(steps.back().get()))
-        step->actions = step->actions_dag->buildExpressions(context);
+    {
+        if (!step->actions)
+            step->actions = step->actions_dag->buildExpressions(context);
+    }
 
     ColumnsWithTypeAndName columns = steps.back()->getResultColumns();
     steps.push_back(std::make_unique<ExpressionActionsStep>(std::make_shared<ActionsDAG>(columns)));
