@@ -1428,7 +1428,12 @@ ActionsDAG::ActionsDAG(const NamesAndTypesList & inputs)
 ActionsDAG::ActionsDAG(const ColumnsWithTypeAndName & inputs)
 {
     for (const auto & input : inputs)
-        addInput(input.name, input.type);
+    {
+        if (input.column)
+            addColumn(input);
+        else
+            addInput(input.name, input.type);
+    }
 }
 
 ActionsDAG::Node & ActionsDAG::addNode(Node node, bool can_replace)
