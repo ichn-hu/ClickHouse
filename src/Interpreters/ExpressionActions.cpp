@@ -188,7 +188,8 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings, 
 
             size_t result_position = sample_block.columns();
             sample_block.insert({nullptr, result_type, result_name});
-            function = function_base->prepare(sample_block, arguments, result_position);
+            if (!function)
+                function = function_base->prepare(sample_block, arguments, result_position);
             function->createLowCardinalityResultCache(settings.max_threads);
 
             bool compile_expressions = false;
@@ -200,7 +201,10 @@ void ExpressionAction::prepare(Block & sample_block, const Settings & settings, 
             /// so we don't want to unfold non deterministic functions
             if (all_const && function_base->isSuitableForConstantFolding() && (!compile_expressions || function_base->isDeterministic()))
             {
-                function->execute(sample_block, arguments, result_position, sample_block.rows(), true);
+                if (added_column)
+                    sample_block.getByPosition(result_position).column = added_column;
+                else
+                    function->execute(sample_block, arguments, result_position, sample_block.rows(), true);
 
                 /// If the result is not a constant, just in case, we will consider the result as unknown.
                 ColumnWithTypeAndName & col = sample_block.safeGetByPosition(result_position);
@@ -588,8 +592,11 @@ void ExpressionActions::addImpl(ExpressionAction action, Names & new_names)
             arguments[i] = sample_block.getByName(action.argument_names[i]);
         }
 
-        action.function_base = action.function_builder->build(arguments);
-        action.result_type = action.function_base->getReturnType();
+        if (!action.function_base)
+        {
+            action.function_base = action.function_builder->build(arguments);
+            action.result_type = action.function_base->getReturnType();
+        }
     }
 
     if (action.type == ExpressionAction::ADD_ALIASES)
@@ -1757,8 +1764,19 @@ ExpressionActionsPtr ActionsDAG::buildExpressions(const Context & context)
                 expressions->add(ExpressionAction::arrayJoin(node->unique_column_name_for_array_join, node->result_name));
                 break;
             case Type::FUNCTION:
-                expressions->add(ExpressionAction::applyFunction(node->function_builder, argument_names, node->result_name));
+            {
+                ExpressionAction action;
+                action.type = ExpressionAction::APPLY_FUNCTION;
+                action.result_name = node->result_name;
+                action.function_builder = node->function_builder;
+                action.function_base = node->function_base;
+                action.function = node->function;
+                action.argument_names = std::move(argument_names);
+                action.added_column = node->column;
+
+                expressions->add(action);
                 break;
+            }
         }
 
         for (const auto & parent : cur.parents)
