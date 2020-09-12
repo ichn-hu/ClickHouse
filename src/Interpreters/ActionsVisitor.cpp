@@ -403,7 +403,12 @@ void ScopeStack::pushLevel(const NamesAndTypesList & input_columns)
     for (const auto & [name, node] : prev->getIndex())
     {
         if (index.count(name) == 0)
-            actions->addInput(node->result_name, node->result_type);
+        {
+            if (node->column)
+                actions->addColumn({node->column, node->result_type, node->result_name});
+            else
+                actions->addInput(node->result_name, node->result_type);
+        }
     }
 }
 
