@@ -1768,6 +1768,7 @@ ExpressionActionsPtr ActionsDAG::buildExpressions(const Context & context)
                 ExpressionAction action;
                 action.type = ExpressionAction::APPLY_FUNCTION;
                 action.result_name = node->result_name;
+                action.result_type = node->result_type;
                 action.function_builder = node->function_builder;
                 action.function_base = node->function_base;
                 action.function = node->function;
