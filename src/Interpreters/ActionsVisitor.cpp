@@ -53,6 +53,7 @@ namespace ErrorCodes
     extern const int TYPE_MISMATCH;
     extern const int NUMBER_OF_ARGUMENTS_DOESNT_MATCH;
     extern const int INCORRECT_ELEMENT_OF_SET;
+    extern const int BAD_ARGUMENTS;
 }
 
 static NamesAndTypesList::iterator findColumn(const String & name, NamesAndTypesList & cols)
@@ -435,10 +436,15 @@ void ScopeStack::addAlias(const std::string & name, std::string alias)
 
 void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name, std::string unique_column_name)
 {
-    auto level = getColumnLevel(source_name);
-    const auto & node = stack[level]->addArrayJoin(source_name, std::move(result_name), std::move(unique_column_name));
+    getColumnLevel(source_name);
 
-    for (size_t j = level + 1; j < stack.size(); ++j)
+    if (stack.front()->getIndex().count(source_name) == 0)
+        throw Exception("Expression with arrayJoin cannot depend on lambda argument: " + source_name,
+                        ErrorCodes::BAD_ARGUMENTS);
+
+    const auto & node = stack.front()->addArrayJoin(source_name, std::move(result_name), std::move(unique_column_name));
+
+    for (size_t j = 1; j < stack.size(); ++j)
         stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
