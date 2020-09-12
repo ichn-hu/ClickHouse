@@ -1505,7 +1505,8 @@ const ActionsDAG::Node & ActionsDAG::addAlias(const std::string & name, std::str
     return addNode(std::move(node), can_replace);
 }
 
-const ActionsDAG::Node & ActionsDAG::addArrayJoin(const std::string & source_name, std::string result_name)
+const ActionsDAG::Node & ActionsDAG::addArrayJoin(
+    const std::string & source_name, std::string result_name, std::string unique_column_name)
 {
     auto & child = getNode(source_name);
 
@@ -1517,6 +1518,7 @@ const ActionsDAG::Node & ActionsDAG::addArrayJoin(const std::string & source_nam
     node.type = Type::ARRAY_JOIN;
     node.result_type = array_type->getNestedType();
     node.result_name = std::move(result_name);
+    node.unique_column_name_for_array_join = std::move(unique_column_name);
     node.children.emplace_back(&child);
 
     return addNode(std::move(node));
@@ -1746,7 +1748,13 @@ ExpressionActionsPtr ActionsDAG::buildExpressions(const Context & context)
                 expressions->add(ExpressionAction::copyColumn(argument_names.at(0), node->result_name, cur.renamed_child != nullptr));
                 break;
             case Type::ARRAY_JOIN:
-                expressions->add(ExpressionAction::arrayJoin(argument_names.at(0), node->result_name));
+                /// Here we copy argument because arrayJoin removes source column.
+                /// It makes possible to remove source column before arrayJoin if it won't be needed anymore.
+
+                /// It could have been possible to implement arrayJoin which keeps source column,
+                /// but in this case it will always be replicated (as many arrays), which is expensive.
+                expressions->add(ExpressionAction::copyColumn(argument_names.at(0), node->unique_column_name_for_array_join));
+                expressions->add(ExpressionAction::arrayJoin(node->unique_column_name_for_array_join, node->result_name));
                 break;
             case Type::FUNCTION:
                 expressions->add(ExpressionAction::applyFunction(node->function_builder, argument_names, node->result_name));

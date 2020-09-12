@@ -433,10 +433,10 @@ void ScopeStack::addAlias(const std::string & name, std::string alias)
         stack[j]->addInput({node.column, node.result_type, node.result_name});
 }
 
-void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name)
+void ScopeStack::addArrayJoin(const std::string & source_name, std::string result_name, std::string unique_column_name)
 {
     auto level = getColumnLevel(source_name);
-    const auto & node = stack[level]->addArrayJoin(source_name, std::move(result_name));
+    const auto & node = stack[level]->addArrayJoin(source_name, std::move(result_name), std::move(unique_column_name));
 
     for (size_t j = level + 1; j < stack.size(); ++j)
         stack[j]->addInput({node.column, node.result_type, node.result_name});
@@ -559,14 +559,7 @@ void ActionsMatcher::visit(const ASTFunction & node, const ASTPtr & ast, Data & 
         if (!data.only_consts)
         {
             String result_name = column_name.get(ast);
-            /// Here we copy argument because arrayJoin removes source column.
-            /// It makes possible to remove source column before arrayJoin if it won't be needed anymore.
-
-            /// It could have been possible to implement arrayJoin which keeps source column,
-            /// but in this case it will always be replicated (as many arrays), which is expensive.
-            String tmp_name = data.getUniqueName("_array_join_" + arg->getColumnName());
-            data.addAlias(arg->getColumnName(), tmp_name);
-            data.addArrayJoin(tmp_name, result_name);
+            data.addArrayJoin(arg->getColumnName(), result_name);
         }
 
         return;
