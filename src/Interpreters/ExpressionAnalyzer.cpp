@@ -157,7 +157,7 @@ void ExpressionAnalyzer::analyzeAggregation()
 
     if (select_query)
     {
-        columns_after_array_join = sourceColumns();
+        NamesAndTypesList array_join_columns;
 
         bool is_array_join_left;
         if (ASTPtr array_join_expression_list = select_query->arrayJoinExpressionList(is_array_join_left))
@@ -169,11 +169,13 @@ void ExpressionAnalyzer::analyzeAggregation()
             array_join->prepare(sample_columns);
             temp_actions = std::make_shared<ActionsDAG>(sample_columns);
 
-            columns_after_array_join.clear();
-
             for (auto & column : temp_actions->getResultColumns())
-                columns_after_array_join.emplace_back(column.name, column.type);
+                if (syntax->array_join_result_to_source.count(column.name))
+                    array_join_columns.emplace_back(column.name, column.type);
         }
+
+        columns_after_array_join = sourceColumns();
+        columns_after_array_join.insert(columns_after_array_join.end(), array_join_columns.begin(), array_join_columns.end());
 
         const ASTTablesInSelectQueryElement * join = select_query->join();
         if (join)
